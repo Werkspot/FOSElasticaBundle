@@ -59,9 +59,15 @@ class Provider extends AbstractProvider
          */
         $qb = clone $queryBuilder;
         $rootAliases = $queryBuilder->getRootAliases();
+        $identifierFieldNames = $this->getIdentifierFieldNames();
+        $countExpression = $rootAliases[0];
+
+        if (isset($identifierFieldNames[0])) {
+            $countExpression .= '.' . $identifierFieldNames[0];
+        }
 
         return $qb
-            ->select($qb->expr()->count($rootAliases[0]))
+            ->select($qb->expr()->count($countExpression))
             // Remove ordering for efficiency; it doesn't affect the count
             ->resetDQLPart('orderBy')
             ->getQuery()
@@ -88,10 +94,7 @@ class Provider extends AbstractProvider
         $orderBy = $queryBuilder->getDQLPart('orderBy');
         if (empty($orderBy)) {
             $rootAliases = $queryBuilder->getRootAliases();
-            $identifierFieldNames = $this->managerRegistry
-                ->getManagerForClass($this->objectClass)
-                ->getClassMetadata($this->objectClass)
-                ->getIdentifierFieldNames();
+            $identifierFieldNames = $this->getIdentifierFieldNames();
             foreach ($identifierFieldNames as $fieldName) {
                 $queryBuilder->addOrderBy($rootAliases[0].'.'.$fieldName);
             }
@@ -114,5 +117,16 @@ class Provider extends AbstractProvider
             ->getRepository($this->objectClass)
             // ORM query builders require an alias argument
             ->{$method}(static::ENTITY_ALIAS);
+    }
+
+    /**
+     * @return array
+     */
+    protected function getIdentifierFieldNames()
+    {
+        return $this->managerRegistry
+            ->getManagerForClass($this->objectClass)
+            ->getClassMetadata($this->objectClass)
+            ->getIdentifierFieldNames();
     }
 }
